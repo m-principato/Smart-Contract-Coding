@@ -50,13 +50,13 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
     }   
 
     modifier fractionalized1(uint256 _NFTindex) {
-    require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == true, "Token already has been fractionalized");
-     _;
+        require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == true, "Token already has been fractionalized");
+        _;
     }  
 
     modifier NFTowner(uint256 _NFTindex) {
-    require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner of this NFT can access it");
-    _;
+        require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner of this NFT can access it");
+        _;
     }
 
 //Security functionalities:
