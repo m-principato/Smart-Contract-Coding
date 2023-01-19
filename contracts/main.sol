@@ -45,7 +45,7 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
 //Custom modifiers:
 
     modifier fractionalized0(uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Token already has not been fractionalized");
+        require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Token has not been fractionalized yet");
         _;
     }   
 
