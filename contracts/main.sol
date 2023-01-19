@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-//Needed for ERC721
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 //Needed for EC1155
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
@@ -14,63 +10,54 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract CarbonCert is ERC721, AccessControl {
-    using Counters for Counters.Counter;
-
-    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
-    Counters.Counter private _tokenIdCounter;
-
-    constructor() ERC721("CarbonCert", "CCT") {
-        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(MINTER_ROLE, msg.sender);
-    }
-
-    function safeMint(address to) public onlyRole(MINTER_ROLE) {
-        uint256 tokenId = _tokenIdCounter.current();
-        _tokenIdCounter.increment();
-        _safeMint(to, tokenId);
-    }
-
-    // The following functions are overrides required by Solidity.
-
-    function supportsInterface(bytes4 interfaceId)
-        public
-        view
-        override(ERC721, AccessControl)
-        returns (bool)
-    {
-        return super.supportsInterface(interfaceId);
-    }
-}
+//Custom import
+import "./CarbonCert.sol";
 
 contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, ERC1155Supply {
     using SafeMath for uint256; //using SafeMath Library to avoid integer overflow-/underflow attacks
 
 //Custom Fractionalizer declarations
+    struct infoStorage {
+            DepositInfo[] Deposit;
+        }
+
+    struct DepositInfo {
+        address owner;
+        address nftAddress;
+
+        uint256 nftID;
+        uint256 depositTimestamp;
+        uint256 TotalCO2O;
+        uint256 fractions;
+
+
+        bool fractionalized;
+    }
+
+    mapping(address => infoStorage) UserToDeposits;
+    mapping(address => mapping (uint256 => uint256)) NftIndex;
 
 
     constructor() ERC1155("") { 
-    //Placeholder//
+        //Placeholder//
     }
 
-// Custom Modifiers:
-    struct infoStorage {
-            information[] info;
-        }
+//Custom modifiers:
 
-        struct information {
-            address owner;
-            uint256 nftID;
-            uint256 depositTimestamp;
+    modifier fractionalized0(uint256 _NFTindex) {
+        require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Token already has not been fractionalized");
+        _;
+    }   
 
-            uint256 supply;
+    modifier fractionalized1(uint256 _NFTindex) {
+    require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == true, "Token already has been fractionalized");
+     _;
+    }  
 
-            bool fractionalized;
-        }
-
-        mapping(address => infoStorage) UserToDeposits;
-        mapping(address => mapping (uint256 => uint256)) NftIndex;
-
+    modifier NFTowner(uint256 _NFTindex) {
+    require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner of this NFT can access it");
+    _;
+    }
 
 //Security functionalities:
 
@@ -98,21 +85,64 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
     }
 
     //Custom fractionalizer functionalities:
-    function fractionalize(uint256 nftID) public {
-        ERC721 CarbonCert;
-        CarbonCert.safeTransferFrom(msg.sender, address(this), nftID);
+    function DepositNFT(address NFTaddress, uint256 nftID, uint256 CO2O) external {
+      
+        ERC721(NFTaddress).safeTransferFrom(msg.sender, address(this), nftID);
 
-        information memory newDeposit;
+        DepositInfo memory newDeposit;
             newDeposit.owner = msg.sender;
+            newDeposit.nftAddress = NFTaddress;
             newDeposit.nftID = nftID;
             newDeposit.depositTimestamp = block.timestamp;
+            newDeposit.TotalCO2O = CO2O;
+            newDeposit.fractions = 0;
             newDeposit.fractionalized = false;
         
-        UserToDeposits[msg.sender].info.push(newDeposit);
+        NftIndex[NFTaddress][nftID] = UserToDeposits[msg.sender].Deposit.length;
+
+        UserToDeposits[msg.sender].Deposit.push(newDeposit);
 
     }
 
-    //Required override by solidity
+    function getDepositInfo(address account, address nftAddress, uint256 nftID) external view returns (address, address, uint256, uint256, bool, uint256, uint256) {
+ 
+        uint256 _NFTindex = NftIndex[nftAddress][nftID]; // Look up the deposit information using the NftIndex mapping
+
+        DepositInfo storage deposit = UserToDeposits[account].Deposit[_NFTindex]; // Get the deposit information using the UserToDeposits mapping and the deposit index
+
+        return (deposit.owner, deposit.nftAddress, deposit.nftID, deposit.depositTimestamp, deposit.fractionalized, deposit.TotalCO2O, deposit.fractions); // Return the relevant information from the deposit
+    }
+
+    function WithdrawNFT(uint256 _NFTindex) external fractionalized0(_NFTindex) NFTowner(_NFTindex) {
+        
+        address _NFTaddress = UserToDeposits[msg.sender].Deposit[_NFTindex].nftAddress;
+        uint256 _nftID =  UserToDeposits[msg.sender].Deposit[_NFTindex].nftID;
+
+        delete UserToDeposits[msg.sender].Deposit[_NFTindex];
+
+        ERC721(_NFTaddress).safeTransferFrom(address(this), msg.sender, _nftID);
+    }
+
+    function FractionalizeNFT(uint256 fractions, uint256 _NFTindex) external fractionalized1(_NFTindex) NFTowner(_NFTindex) {
+       
+        UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = true;
+        UserToDeposits[msg.sender].Deposit[_NFTindex].fractions = fractions;
+
+        _mint(address(msg.sender), _NFTindex, fractions, "");
+    }
+
+    function UnifyFractions(uint256 _NFTindex) external fractionalized0(_NFTindex) {
+        
+        uint256 totalFractions = UserToDeposits[msg.sender].Deposit[_NFTindex].fractions;
+        require(balanceOf(msg.sender, _NFTindex) == totalFractions, "Insufficient fractions");
+       
+        UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = false;
+        UserToDeposits[msg.sender].Deposit[_NFTindex].fractions = 0;
+        
+        _burn(address(msg.sender), _NFTindex, totalFractions);
+    }
+
+    //Required override by solidity for safely receiving ERC721 tokens
     function onERC721Received(address, address, uint256, bytes calldata) external pure override returns(bytes4) {
         return this.onERC721Received.selector;
     } 
