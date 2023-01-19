@@ -9,9 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
-//Custom import
-import "./CarbonCert.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, ERC1155Supply {
     using SafeMath for uint256; //using SafeMath Library to avoid integer overflow-/underflow attacks
