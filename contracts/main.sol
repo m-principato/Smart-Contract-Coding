@@ -88,27 +88,26 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
     }
 
     //Custom fractionalizer functionalities:
-    function DepositNFT(address NFTaddress, uint256 Ext_NFT_ID, uint256 CO2O) external {
+    function DepositNFT(address _Ext_NFT_Address, uint256 _Ext_NFT_ID, uint256 _CO2O) external {
       
-        ERC721(NFTaddress).safeTransferFrom(msg.sender, address(this), Ext_NFT_ID);
+        ERC721(_Ext_NFT_Address).safeTransferFrom(msg.sender, address(this), _Ext_NFT_ID);
 
         DepositInfo memory newDeposit;
 
             newDeposit.owner = msg.sender;
-            newDeposit.Ext_NFT_Address = NFTaddress;
+            newDeposit.Ext_NFT_Address = _Ext_NFT_Address;
             newDeposit.Int_NFT_ID = _intIDcounter.current();
-            newDeposit.Ext_NFT_ID = Ext_NFT_ID;
+            newDeposit.Ext_NFT_ID = _Ext_NFT_ID;
             newDeposit.depositTimestamp = block.timestamp;
-            newDeposit.totalCO2O = CO2O;
+            newDeposit.totalCO2O = _CO2O;
             newDeposit.fractions = 0;
             newDeposit.fractionalized = false;
         
-        NftIndex[NFTaddress][Ext_NFT_ID] = UserToDeposits[msg.sender].Deposit.length;
+        NftIndex[_Ext_NFT_Address][_Ext_NFT_ID] = UserToDeposits[msg.sender].Deposit.length;
 
         _intIDcounter.increment();
 
         UserToDeposits[msg.sender].Deposit.push(newDeposit);
-
     }
 
     function getDepositInfo(address _Account, address _Ext_NFT_Address, uint256 _Ext_NFT_ID) external view returns (address, address, uint256, uint256, uint256, uint256, bool, uint256) {
@@ -122,12 +121,12 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
 
     function WithdrawNFT(uint256 _Int_NFT_ID) external fractionalized0(_Int_NFT_ID) NFTowner(_Int_NFT_ID) {
         
-        address _NFTaddress = UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].Ext_NFT_Address;
+        address _Ext_NFT_Address = UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].Ext_NFT_Address;
         uint256 _nftID =  UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].Ext_NFT_ID;
 
         delete UserToDeposits[msg.sender].Deposit[_Int_NFT_ID];
 
-        ERC721(_NFTaddress).safeTransferFrom(address(this), msg.sender, _nftID);
+        ERC721(_Ext_NFT_Address).safeTransferFrom(address(this), msg.sender, _nftID);
     }
 
     function FractionalizeNFT(uint256 fractions, uint256 _Int_NFT_ID) external fractionalized1(_Int_NFT_ID) NFTowner(_Int_NFT_ID) {
