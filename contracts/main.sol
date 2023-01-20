@@ -48,12 +48,12 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
 //Custom modifiers:
 
     modifier fractionalized0(uint256 _Int_NFT_ID) {
-        require(UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionalized == false, "Token has not been fractionalized yet");
+        require(UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionalized == false, "Token has already been fractionalized");
         _;
     }   
 
     modifier fractionalized1(uint256 _Int_NFT_ID) {
-        require(UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionalized == true, "Token already has been fractionalized");
+        require(UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionalized == true, "Token has not yet been fractionalized");
         _;
     }  
 
@@ -129,7 +129,7 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
         ERC721(_Ext_NFT_Address).safeTransferFrom(address(this), msg.sender, _nftID);
     }
 
-    function FractionalizeNFT(uint256 fractions, uint256 _Int_NFT_ID) external fractionalized1(_Int_NFT_ID) NFTowner(_Int_NFT_ID) {
+    function FractionalizeNFT(uint256 fractions, uint256 _Int_NFT_ID) external fractionalized0(_Int_NFT_ID) NFTowner(_Int_NFT_ID) {
        
         UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionalized = true;
         UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractions = fractions;
