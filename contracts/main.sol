@@ -6,19 +6,20 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 
-contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, ERC1155Supply {
-    using SafeMath for uint256; //using SafeMath Library to avoid integer overflow-/underflow attacks
-    using Counters for Counters.Counter;
+contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
+    using SafeMath for uint256; //using SafeMath library to avoid integer overflow-/underflow attacks
+    using Counters for Counters.Counter; //using Counters library to safely increment a global counter
 
     Counters.Counter private _intIDcounter;
 
-//Custom Fractionalizer declarations
+//Declarations
+    
+    //Custom Fractionalizer declarations:
     struct infoStorage {
             DepositInfo[] Deposit;
         }
@@ -40,9 +41,19 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
     mapping(address => infoStorage) UserToDeposits;
     mapping(address => mapping (uint256 => uint256)) NftIndex;
 
+    //Custom AMM declarations:
+    mapping(uint256 => uint256) ID2AMMconstant;
+
+    mapping(uint256 => uint256) ID2AMMfDeposits;
+    mapping(uint256 => uint256) ID2AMMwDeposits;
+
+    mapping(address => uint256) User2LPshares;
+    mapping(address => uint256) User2wWei;
+
+//Constructor
 
     constructor() ERC1155("") { 
-        //Placeholder//
+        /*Placeholder*/
     }
 
 //Custom modifiers:
@@ -62,6 +73,17 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
         _;
     }
 
+    modifier validAmountFraction(uint256 _amountFraction, uint256 _Int_NFT_ID) {
+        require(balanceOf(msg.sender, _Int_NFT_ID) >= _amountFraction, "Insufficient fractions");
+        require(_amountFraction >= 0, "Ammount cannot be Zero");
+        _;
+    }
+
+    modifier activePool(uint256 _Int_NFT_ID) {
+        require(ID2AMMfDeposits[_Int_NFT_ID] > 0, "Zero Liquidity...Wait until liquidity is provided");
+        _;
+    }
+
 //Security functionalities:
 
     function pause() public onlyOwner {
@@ -73,19 +95,6 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
     }
 
 //Operational functionalities
-
-    //ERC1155 standard functionalities:
-    function mint(address account, uint256 id, uint256 amount, bytes memory data) private {
-        _mint(account, id, amount, data);
-    }
-
-    function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) private {
-        _mintBatch(to, ids, amounts, data);
-    }
-
-    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal whenNotPaused override(ERC1155, ERC1155Supply) {
-        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-    }
 
     //Custom fractionalizer functionalities:
     function DepositNFT(address _Ext_NFT_Address, uint256 _Ext_NFT_ID, uint256 _CO2O) external {
@@ -148,8 +157,38 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
         _burn(address(msg.sender), _Int_NFT_ID, totalFractions);
     }
 
+    //Custom AMM functions:
+
+    function provideLiq(uint256 _amountFraction, uint256 _Int_NFT_ID) external payable validAmountFraction(_amountFraction, _Int_NFT_ID) {
+        require(msg.value >= 0, "Value cannot be Zero");
+        User2wWei[msg.sender].add(msg.value);
+        if(ID2AMMfDeposits[_Int_NFT_ID] == 0) { 
+            User2LPshares[msg.sender].add(100);
+            ID2AMMfDeposits[_Int_NFT_ID].add(100);
+            ID2AMMwDeposits[_Int_NFT_ID].add(msg.value);
+        } 
+        else{              
+            uint256 share_Fraction = ID2AMMfDeposits[_Int_NFT_ID].mul(_amountFraction).div(ID2AMMfDeposits[_Int_NFT_ID]);
+            uint256 share_wWei = ID2AMMwDeposits[_Int_NFT_ID].mul(msg.value).div(ID2AMMwDeposits[_Int_NFT_ID]); 
+            require(share_Fraction == share_wWei, "Equivalent value of tokens not provided");
+        }
+
+        
+    }
+
+
+
+
+
+
+//Overrides
+
     //Required override by solidity for safely receiving ERC721 tokens
     function onERC721Received(address, address, uint256, bytes calldata) external pure override returns(bytes4) {
         return this.onERC721Received.selector;
     } 
+    //Required override to enable the pause function
+    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal whenNotPaused override(ERC1155, ERC1155Supply) {
+        super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+    }
 }
