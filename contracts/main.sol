@@ -26,15 +26,13 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
 
     struct DepositInfo {
         address owner;
-        
         address Ext_NFT_Address;
         uint256 Ext_NFT_ID;
-
         uint256 Int_NFT_ID;
         uint256 depositTimestamp;
-        
         uint256 totalCO2O;
         uint256 fractions;
+        uint256 fractionCO2O;
         bool fractionalized;
     }
 
@@ -42,15 +40,6 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
     mapping(address => mapping (uint256 => uint256)) NftIndex;
 
     //Custom AMM declarations:
-    struct AMMinfoStorage {
-        AMMdepositInfo[] AMMdeposit;
-    }
-
-    struct AMMdepositInfo {
-        address Ext_NFT_ID;
-        uint256 Ext_NFT_ID;
-
-    }     
 
     mapping(uint256 => uint256) ID2AMMconstant;
 
@@ -119,6 +108,7 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
             newDeposit.depositTimestamp = block.timestamp;
             newDeposit.totalCO2O = _CO2O;
             newDeposit.fractions = 0;
+            newDeposit.fractionCO2O = 0;
             newDeposit.fractionalized = false;
         
         NftIndex[_Ext_NFT_Address][_Ext_NFT_ID] = UserToDeposits[msg.sender].Deposit.length;
@@ -128,13 +118,13 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
         UserToDeposits[msg.sender].Deposit.push(newDeposit);
     }
 
-    function getDepositInfo(address _Account, address _Ext_NFT_Address, uint256 _Ext_NFT_ID) external view returns (address, address, uint256, uint256, uint256, uint256, bool, uint256) {
+    function getDepositInfo(address _Account, address _Ext_NFT_Address, uint256 _Ext_NFT_ID) external view returns (address, address, uint256, uint256, uint256, uint256, bool, uint256, uint256) {
  
         uint256 _NFTindex = NftIndex[_Ext_NFT_Address][_Ext_NFT_ID]; // Look up the deposit information using the NftIndex mapping
 
         DepositInfo storage deposit = UserToDeposits[_Account].Deposit[_NFTindex]; // Get the deposit information using the UserToDeposits mapping and the deposit index
 
-        return (deposit.owner, deposit.Ext_NFT_Address, deposit.Ext_NFT_ID, deposit.Int_NFT_ID, deposit.depositTimestamp, deposit.totalCO2O, deposit.fractionalized, deposit.fractions); // Return the relevant information from the deposit
+        return (deposit.owner, deposit.Ext_NFT_Address, deposit.Ext_NFT_ID, deposit.Int_NFT_ID, deposit.depositTimestamp, deposit.totalCO2O, deposit.fractionalized, deposit.fractions, deposit.fractionCO2O); // Return the relevant information from the deposit
     }
 
     function WithdrawNFT(uint256 _Int_NFT_ID) external fractionalized0(_Int_NFT_ID) NFTowner(_Int_NFT_ID) {
@@ -151,6 +141,7 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
        
         UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionalized = true;
         UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractions = fractions;
+        UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionCO2O = UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].totalCO2O.div(fractions);
 
         _mint(address(msg.sender), _Int_NFT_ID, fractions, "");
     }
@@ -162,36 +153,10 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
        
         UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionalized = false;
         UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractions = 0;
+        UserToDeposits[msg.sender].Deposit[_Int_NFT_ID].fractionCO2O = 0;
         
         _burn(address(msg.sender), _Int_NFT_ID, totalFractions);
     }
-
-    //Custom AMM functions:
-
-    function provideLiq(uint256 _amountFraction, uint256 _Int_NFT_ID) external payable validAmountFraction(_amountFraction, _Int_NFT_ID) {
-        require(msg.value >= 0, "Value cannot be Zero");
-
-        _burn(address(msg.sender), Int_NFT_ID, _amountFraction)
-
-
-        if(ID2AMMfDeposits[_Int_NFT_ID] == 0) { 
-            
-            ID2AMMfDeposits[_Int_NFT_ID].add(_amountFraction);
-            ID2AMMwDeposits[_Int_NFT_ID].add(msg.value);
-
-            User2LPshares[msg.sender].add(100);
-        } 
-        else{              
-            uint256 share_Fraction = ID2AMMfDeposits[_Int_NFT_ID].mul(_amountFraction).div(ID2AMMfDeposits[_Int_NFT_ID]);
-            uint256 share_wWei = ID2AMMwDeposits[_Int_NFT_ID].mul(msg.value).div(ID2AMMwDeposits[_Int_NFT_ID]); 
-            require(share_Fraction == share_wWei, "Equivalent value of tokens not provided");
-            User2LPshares[msg.sender] = share_Fraction;
-        }
-
-    }
-
-
-
 
 
 
@@ -205,5 +170,4 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
     function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal whenNotPaused override(ERC1155, ERC1155Supply) {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
-    mapping(uint256 => mapping(address => uint256)) internal override _balances;
 }
