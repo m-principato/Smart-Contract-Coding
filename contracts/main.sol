@@ -21,8 +21,8 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
     
     //Custom Fractionalizer declarations:
     struct infoStorage {
-            DepositInfo[] Deposit;
-        }
+        DepositInfo[] Deposit;
+    }
 
     struct DepositInfo {
         address owner;
@@ -42,13 +42,22 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
     mapping(address => mapping (uint256 => uint256)) NftIndex;
 
     //Custom AMM declarations:
+    struct AMMinfoStorage {
+        AMMdepositInfo[] AMMdeposit;
+    }
+
+    struct AMMdepositInfo {
+        address Ext_NFT_ID;
+        uint256 Ext_NFT_ID;
+
+    }     
+
     mapping(uint256 => uint256) ID2AMMconstant;
 
     mapping(uint256 => uint256) ID2AMMfDeposits;
     mapping(uint256 => uint256) ID2AMMwDeposits;
 
     mapping(address => uint256) User2LPshares;
-    mapping(address => uint256) User2wWei;
 
 //Constructor
 
@@ -161,19 +170,24 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
 
     function provideLiq(uint256 _amountFraction, uint256 _Int_NFT_ID) external payable validAmountFraction(_amountFraction, _Int_NFT_ID) {
         require(msg.value >= 0, "Value cannot be Zero");
-        User2wWei[msg.sender].add(msg.value);
+
+        _burn(address(msg.sender), Int_NFT_ID, _amountFraction)
+
+
         if(ID2AMMfDeposits[_Int_NFT_ID] == 0) { 
-            User2LPshares[msg.sender].add(100);
-            ID2AMMfDeposits[_Int_NFT_ID].add(100);
+            
+            ID2AMMfDeposits[_Int_NFT_ID].add(_amountFraction);
             ID2AMMwDeposits[_Int_NFT_ID].add(msg.value);
+
+            User2LPshares[msg.sender].add(100);
         } 
         else{              
             uint256 share_Fraction = ID2AMMfDeposits[_Int_NFT_ID].mul(_amountFraction).div(ID2AMMfDeposits[_Int_NFT_ID]);
             uint256 share_wWei = ID2AMMwDeposits[_Int_NFT_ID].mul(msg.value).div(ID2AMMwDeposits[_Int_NFT_ID]); 
             require(share_Fraction == share_wWei, "Equivalent value of tokens not provided");
+            User2LPshares[msg.sender] = share_Fraction;
         }
 
-        
     }
 
 
@@ -191,4 +205,5 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
     function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal whenNotPaused override(ERC1155, ERC1155Supply) {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
+    mapping(uint256 => mapping(address => uint256)) internal override _balances;
 }
