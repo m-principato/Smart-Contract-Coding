@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-//Needed for EC1155
+//Making use of as much battle-tested code imports as possible to minimize bugs and possible attack vectors
 import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
@@ -10,9 +10,11 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 
 contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, ERC1155Supply {
     using SafeMath for uint256; //using SafeMath Library to avoid integer overflow-/underflow attacks
+    using Counters for Counters.Counter;
 
 //Custom Fractionalizer declarations
     struct infoStorage {
@@ -21,14 +23,15 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
 
     struct DepositInfo {
         address owner;
-        address nftAddress;
+        
+        address extAddress;
+        uint256 extID;
 
-        uint256 nftID;
+        uint256 intID;
         uint256 depositTimestamp;
-        uint256 TotalCO2O;
+        
+        uint256 totalCO2O;
         uint256 fractions;
-
-
         bool fractionalized;
     }
 
@@ -83,38 +86,38 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Burnable, E
     }
 
     //Custom fractionalizer functionalities:
-    function DepositNFT(address NFTaddress, uint256 nftID, uint256 CO2O) external {
+    function DepositNFT(address NFTaddress, uint256 extID, uint256 CO2O) external {
       
-        ERC721(NFTaddress).safeTransferFrom(msg.sender, address(this), nftID);
+        ERC721(NFTaddress).safeTransferFrom(msg.sender, address(this), extID);
 
         DepositInfo memory newDeposit;
             newDeposit.owner = msg.sender;
-            newDeposit.nftAddress = NFTaddress;
-            newDeposit.nftID = nftID;
+            newDeposit.extAddress = NFTaddress;
+            newDeposit.extID = extID;
             newDeposit.depositTimestamp = block.timestamp;
-            newDeposit.TotalCO2O = CO2O;
+            newDeposit.totalCO2O = CO2O;
             newDeposit.fractions = 0;
             newDeposit.fractionalized = false;
         
-        NftIndex[NFTaddress][nftID] = UserToDeposits[msg.sender].Deposit.length;
+        NftIndex[NFTaddress][extID] = UserToDeposits[msg.sender].Deposit.length;
 
         UserToDeposits[msg.sender].Deposit.push(newDeposit);
 
     }
 
-    function getDepositInfo(address account, address nftAddress, uint256 nftID) external view returns (address, address, uint256, uint256, bool, uint256, uint256) {
+    function getDepositInfo(address account, address extAddress, uint256 extID) external view returns (address, address, uint256, uint256, bool, uint256, uint256) {
  
-        uint256 _NFTindex = NftIndex[nftAddress][nftID]; // Look up the deposit information using the NftIndex mapping
+        uint256 _NFTindex = NftIndex[extAddress][extID]; // Look up the deposit information using the NftIndex mapping
 
         DepositInfo storage deposit = UserToDeposits[account].Deposit[_NFTindex]; // Get the deposit information using the UserToDeposits mapping and the deposit index
 
-        return (deposit.owner, deposit.nftAddress, deposit.nftID, deposit.depositTimestamp, deposit.fractionalized, deposit.TotalCO2O, deposit.fractions); // Return the relevant information from the deposit
+        return (deposit.owner, deposit.extAddress, deposit.extID, deposit.depositTimestamp, deposit.fractionalized, deposit.totalCO2O, deposit.fractions); // Return the relevant information from the deposit
     }
 
     function WithdrawNFT(uint256 _NFTindex) external fractionalized0(_NFTindex) NFTowner(_NFTindex) {
         
-        address _NFTaddress = UserToDeposits[msg.sender].Deposit[_NFTindex].nftAddress;
-        uint256 _nftID =  UserToDeposits[msg.sender].Deposit[_NFTindex].nftID;
+        address _NFTaddress = UserToDeposits[msg.sender].Deposit[_NFTindex].extAddress;
+        uint256 _nftID =  UserToDeposits[msg.sender].Deposit[_NFTindex].extID;
 
         delete UserToDeposits[msg.sender].Deposit[_NFTindex];
 
