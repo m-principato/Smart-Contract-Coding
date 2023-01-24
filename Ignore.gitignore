@@ -1,1 +1,3 @@
-*.pdf
+./contracts/artifacts/*
+./artifacts
+.deps/*
