@@ -7,7 +7,7 @@ ECO.DAO is a Coding Project for the module "Introduction to Blockchain Technolog
 The contract is ready to be deployed, however, it exceedes the bytesize limit of the Ethereum Mainnet (see [Room for imporevements](https://github.com/m-principato/Smart-Contract-Coding#room-for-improvements)).
 
 ## Security
-We follow the established *ERC-1155 token standard*. We do **not** override functionalities besides overrides that are required by Solidity for improved interoperability (e.g., interface improvements). 
+We follow the established *ERC-1155 token standard*. We do ***not*** override functionalities besides overrides that are required by Solidity for improved interoperability (e.g., interface improvements). 
 
 For security reasons, we further make use of the code from the [OpenZeppelin repository](https://github.com/OpenZeppelin/), which contains tested and constantly updated smart contract standards. Additionally, we make use of OpenZeppelin Libraries for increased security when adding custom functionalities which require computations and counters.
 
