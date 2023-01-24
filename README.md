@@ -1,6 +1,7 @@
 # ![Picture1](https://user-images.githubusercontent.com/118806662/214442399-69158fa2-2de6-4e6a-b68c-a68b265064bc.png)
 
-ECO.DAO: Coding Project for the module "Introduction to Blockchain Technology"
+## Background Information
+ECO.DAO is a Coding Project for the module "Introduction to Blockchain Technology".
 
 ## Usage
 The contract is ready to be deployed, however, it exceedes the bytesize limit of the Ethereum Mainnet (see [Room for imporevements](https://github.com/m-principato/Smart-Contract-Coding#room-for-improvements))
