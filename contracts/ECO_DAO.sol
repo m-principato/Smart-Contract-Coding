@@ -6,13 +6,14 @@ pragma solidity ^0.8.0;
     import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
     import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
     import "@openzeppelin/contracts/security/Pausable.sol";
+    import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
     import "@openzeppelin/contracts/access/AccessControl.sol";
     import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
     import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
     import "@openzeppelin/contracts/utils/Counters.sol";
     import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Supply {
+contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessControl, ERC1155Supply {
 
 //Library initialization
     using Counters for Counters.Counter; //using Counters library to safely increment global counters
