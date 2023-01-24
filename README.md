@@ -1,4 +1,5 @@
-# ECO.DAO
+# ECO.DAO![Picture1](https://user-images.githubusercontent.com/118806662/214442399-69158fa2-2de6-4e6a-b68c-a68b265064bc.png)
+
 -Coding Project for the module "Introduction to Blockchain Technology"-
 
 ## Usage
