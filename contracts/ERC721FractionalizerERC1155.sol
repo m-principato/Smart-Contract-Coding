@@ -39,15 +39,6 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
     mapping(address => infoStorage) UserToDeposits;
     mapping(address => mapping (uint256 => uint256)) NftIndex;
 
-    //Custom AMM declarations:
-
-    mapping(uint256 => uint256) ID2AMMconstant;
-
-    mapping(uint256 => uint256) ID2AMMfDeposits;
-    mapping(uint256 => uint256) ID2AMMwDeposits;
-
-    mapping(address => uint256) User2LPshares;
-
 //Constructor
 
     constructor() ERC1155("") { 
@@ -74,11 +65,6 @@ contract Main is ERC1155, IERC721Receiver, Pausable, Ownable, ERC1155Supply {
     modifier validAmountFraction(uint256 _amountFraction, uint256 _Int_NFT_ID) {
         require(balanceOf(msg.sender, _Int_NFT_ID) >= _amountFraction, "Insufficient fractions");
         require(_amountFraction >= 0, "Ammount cannot be Zero");
-        _;
-    }
-
-    modifier activePool(uint256 _Int_NFT_ID) {
-        require(ID2AMMfDeposits[_Int_NFT_ID] > 0, "Zero Liquidity...Wait until liquidity is provided");
         _;
     }
 
