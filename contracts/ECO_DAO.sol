@@ -48,7 +48,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
     ProposalInfo[] public Proposals;
 
     struct ProposalInfo {
-        bytes name;
+        uint256 NftIndex;
         address proposer;
         uint256 proposalTimestamp;
         uint256 voteCount;
@@ -123,10 +123,10 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
     }
 
     //ECO Governance funcionalities
-    function addProposal(bytes calldata _Proposal_Name) external {
+    function addProposal(bytes calldata _NFTindex) external {
         ProposalInfo memory newProposal;
 
-            newProposal.name = _Proposal_Name;
+            newProposal.NFTindex = _NFTindex;
             newProposal.proposer = msg.sender;
             newProposal.proposalTimestamp = block.timestamp;
             newProposal.voteCount = 0;
