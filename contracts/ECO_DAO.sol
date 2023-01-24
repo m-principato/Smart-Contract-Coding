@@ -10,10 +10,12 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 
 contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Supply {
     using Counters for Counters.Counter; //using Counters library to safely increment global counters
+    using SafeMath for uint256; //using SafeMath library to avoid integer overflow-/underflow attacks
 
 //Declarations
     Counters.Counter private _Counter1;
@@ -52,14 +54,13 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         uint256 voteCount;
     }
 
-    struct Voter {
-        uint256 weight;
-        bool voted; 
-        address delegate;
-        uint256 vote;   
+    struct VoteInfo {
+        bool hasVoted;
+        uint256 votes;  
     }
+
     mapping(uint256 => ProposalInfo) public Index2Proposal;
-    mapping(address => Voter) public voters;
+    mapping(address => mapping(uint256 => VoteInfo)) public Voter2Proposal;
 
 //Constructor
     constructor() ERC1155 ("") {
@@ -95,6 +96,22 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         _;
     }
 
+    //Voting Checkers
+    modifier GovTokens() {
+        require(balanceOf(msg.sender, 0) >=  0, "No voting power. Get ECO tokens to vote");
+        _;
+    }
+    
+    modifier noDoubleVote(uint256 _proposalID) {
+        require(!Voter2Proposal[msg.sender][_proposalID].hasVoted, "You have already voted for this proposal.");
+        _;
+    }
+
+    modifier canVerify(uint256 _proposalID) {
+        require(Index2Proposal[_proposalID].voteCount > totalSupply(1).div(2), "Not enough votes");
+        _;
+    }
+
 //Functionalities
     //Security admin bypass functionalities
     function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -121,6 +138,19 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         Proposals.push(newProposal);         
     }
 
+    function vote(uint256 _proposalID) external GovTokens noDoubleVote(_proposalID) {
+        VoteInfo memory newVoter;
+            newVoter.hasVoted = true;
+            newVoter.votes = balanceOf(msg.sender, 0);
+
+        Index2Proposal[_proposalID].voteCount.add(newVoter.votes);
+        
+        Voter2Proposal[msg.sender][_proposalID] = newVoter;
+    }
+
+    function verify(uint256 _proposalID) external canVerify {
+        
+    }
 
 
     //Fractionalization functionalitities
