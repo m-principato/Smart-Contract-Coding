@@ -1,6 +1,9 @@
 # ECO.DAO
 -Coding Project for the module "Introduction to Blockchain Technology"-
 
+## Usage
+The contract is ready to be deployed, however, it exceedes the bytesize limit (see
+
 ## Security
 We follow the established *ERC-1155 token standard*. We do **not** override functionalities besides overrides that are required by Solidity for improved interoperability (e.g., interface improvements). 
 
@@ -21,6 +24,6 @@ Specifically, we make use of
 - [Counters](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Counters.sol)
 
 ## Room for improvements
-The contract is currently very long, exceeding the byte size limit of 24576 bytes that was proposed in [EIP-170](https://github.com/ethereum/EIPs/issues/170) and introduced by the [Spurious Dragon Ethereum Update](https://blog.ethereum.org/2016/11/18/hard-fork-no-4-spurious-dragon).
+The ECO.DAO contract is currently very long, exceeding the byte size limit of 24576 bytes that was proposed in [EIP-170](https://github.com/ethereum/EIPs/issues/170) and introduced by the [Spurious Dragon Ethereum Update](https://blog.ethereum.org/2016/11/18/hard-fork-no-4-spurious-dragon).
 
 Further steps need to be taken to reduce the contract size, for example by following common [guidlines for optimization](https://ethereum.org/en/developers/tutorials/downsizing-contracts-to-fight-the-contract-size-limit/). 
