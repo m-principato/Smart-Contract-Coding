@@ -6,6 +6,13 @@ ECO.DAO is a Coding Project for the module "Introduction to Blockchain Technolog
 ## Usage
 The contract is ready to be deployed, however, it exceedes the bytesize limit of the Ethereum Mainnet (see [Room for imporevements](https://github.com/m-principato/Smart-Contract-Coding#room-for-improvements)).
 
+### Deploy with RemixIDE
+Straightforward deployment via import of the [ECO.DAO sol contract](https://github.com/m-principato/Smart-Contract-Coding/blob/main/contracts/ECO_DAO.sol), compiling it, and deploying it.
+
+### Deploy with Truffle
+run `$ npm install -g truffle`
+
+
 ## Security
 We mainly follow the established **ERC-1155 token standard**. We do ***not*** override functionalities besides overrides that are required by Solidity for improved interoperability (e.g., interface improvements). 
 
