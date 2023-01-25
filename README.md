@@ -2,6 +2,7 @@
 
 ## Background Information
 ECO.DAO is a Coding Project for the module "Introduction to Blockchain Technology".
+Please, see the [whitepaper](https://github.com/m-principato/Smart-Contract-Coding/blob/main/ICO_Paper.pdf) and the [pitch deck](https://github.com/m-principato/Smart-Contract-Coding/blob/main/ICO-Pitch.pdf) for more information.
 
 ## Usage
 The contract is ready to be deployed, however, it exceedes the bytesize limit of the Ethereum Mainnet (see [Room for imporevements](https://github.com/m-principato/Smart-Contract-Coding#room-for-improvements)).
@@ -10,7 +11,9 @@ The contract is ready to be deployed, however, it exceedes the bytesize limit of
 Straightforward deployment via import of the [ECO.DAO sol contract](https://github.com/m-principato/Smart-Contract-Coding/blob/main/contracts/ECO_DAO.sol), compiling it, and deploying it.
 
 ### Deploy with Truffle
-run `$ npm install -g truffle`
+- **Initialize:** run `$ npm install -g truffle` and then `$ truffle init`
+- **Compile:** run `$ npm install @openzeppelin/contracts` and then `$ truffle compile`
+- **Deploy:** rung  
 
 
 ## Security
