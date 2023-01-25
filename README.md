@@ -13,7 +13,7 @@ Straightforward deployment via import of the [ECO.DAO sol contract](https://gith
 ### Deploy with Truffle
 - **Initialize:** run `$ npm install -g truffle` and then `$ truffle init`
 - **Compile:** run `$ npm install @openzeppelin/contracts` and then `$ truffle compile`
-- **Deploy:** rung  
+- **Deploy:** run `$ truffle develop` and then `truffle(develop)> deploy`  
 
 
 ## Security
