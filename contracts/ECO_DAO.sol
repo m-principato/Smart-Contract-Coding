@@ -6,14 +6,13 @@ pragma solidity ^0.8.0;
     import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
     import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
     import "@openzeppelin/contracts/security/Pausable.sol";
-    import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
     import "@openzeppelin/contracts/access/AccessControl.sol";
     import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
     import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
     import "@openzeppelin/contracts/utils/Counters.sol";
     import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessControl, ERC1155Supply {
+contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Supply {
 
 //Library initialization
     using Counters for Counters.Counter; //using Counters library to safely increment global counters
@@ -29,9 +28,6 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
     uint256 public constant CO2O = 1;
     uint256 public constant Reserve_CO2O = 2;
     uint256 public constant Reserve_WEI = 3;
-
-    //For Roles
-    bytes32 public constant ECO_Gov = keccak256("ECO_Gov");
 
     //For Fractionalizer
     struct DepositStorage {
@@ -93,73 +89,10 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
 //Constructor
     constructor() ERC1155 ("") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(ECO_Gov, msg.sender);
     }
 
 //Modifiers
-    //Fractionalization Checkers
-    modifier fractionalized0(uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Token has already been fractionalized");
-        _;
-    }   
 
-    modifier fractionalized1(uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == true, "Token has not yet been fractionalized");
-        _;
-    }  
-
-    modifier validAmountFraction(uint256 _amountFraction) {
-        require(balanceOf(msg.sender, CO2O) >= _amountFraction, "Insufficient fractions");
-        require(_amountFraction > 0, "Ammount cannot be Zero");
-        _;
-    }
-
-    modifier NFTowner(uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner of this NFT can access it");
-        _;
-    }
-
-    modifier onlyApproved (uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].approved == true, "Not approved by Governance. Please submit approval request");
-        _;
-    }
-
-    //Voting Checkers
-    modifier GovTokens() {
-        require(balanceOf(msg.sender, ECO) >  0, "No voting power. Get ECO tokens to vote");
-        _;
-    }
-    
-    modifier noDoubleVote(uint256 _proposalID) {
-        require(!Voter2Proposal[msg.sender][_proposalID].hasVoted, "You have already voted for this proposal.");
-        _;
-    }
-
-    modifier verifiable(uint256 _proposalID) {
-        require(Index2Proposal[_proposalID].voteCount > totalSupply(ECO).div(2), "Not enough votes");
-        _;
-    }
-
-    // Market checkers
-    modifier validWEIamount() {
-        require(msg.value > 0, "Amount cannot be zero!");
-        _;
-    }
-
-    modifier validCO2Oamount(uint256 CO2O_amount) {
-        require(CO2O_amount > 0, "Amount cannot be zero!");
-        _;
-    }
-    
-    modifier activeLPbuy() {
-        require(buyRate > 0, "Zero Liquidity...Wait until liquidity is provided");
-        _;
-    }
-
-    modifier activeLPsell() {
-        require(sellRate > 0, "Zero Liquidity...Wait until liquidity is provided");
-        _;
-    }
 
 //Functionalities
     //Security admin bypass functionalities
@@ -187,7 +120,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
         Proposals.push(newProposal);         
     }
 
-    function vote(uint256 _proposalID) external GovTokens noDoubleVote(_proposalID) whenNotPaused {
+    function vote(uint256 _proposalID) external whenNotPaused {
         VoteInfo memory newVoter;
             newVoter.hasVoted = true;
             newVoter.votes = balanceOf(msg.sender, ECO);
@@ -197,7 +130,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
         Voter2Proposal[msg.sender][_proposalID] = newVoter;
     }
 
-    function verify(uint256 _proposalID) external verifiable (_proposalID) whenNotPaused {
+    function approveCO2O(uint256 _proposalID) external whenNotPaused {
         uint256 _NFT_ID = Index2Proposal[_proposalID].Nftindex;
 
         UserToDeposits[msg.sender].Deposit[_NFT_ID].approved = true;
@@ -227,14 +160,14 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
 
     function getDepositInfo(address _Account, address _Ext_NFT_Address, uint256 _Ext_NFT_ID) external view returns (address, address, uint256, uint256, uint256, uint256, bool, bool) {
  
-        uint256 _NFTindex = NftIndex[_Ext_NFT_Address][_Ext_NFT_ID]; // Look up the deposit information using the NftIndex mapping
+        uint256 _NFTindex = NftIndex[_Ext_NFT_Address][_Ext_NFT_ID]; 
 
-        DepositInfo storage deposit = UserToDeposits[_Account].Deposit[_NFTindex]; // Get the deposit information using the UserToDeposits mapping and the deposit index
+        DepositInfo storage deposit = UserToDeposits[_Account].Deposit[_NFTindex]; 
 
-        return (deposit.owner, deposit.Ext_NFT_Address, deposit.Ext_NFT_ID, _NFTindex, deposit.depositTimestamp, deposit.totalCO2O, deposit.approved, deposit.fractionalized); // Return the relevant information from the deposit
+        return (deposit.owner, deposit.Ext_NFT_Address, deposit.Ext_NFT_ID, _NFTindex, deposit.depositTimestamp, deposit.totalCO2O, deposit.approved, deposit.fractionalized); 
     }
 
-    function WithdrawNFT(uint256 _NFTindex) external fractionalized0(_NFTindex) NFTowner(_NFTindex) whenNotPaused {
+    function WithdrawNFT(uint256 _NFTindex) external whenNotPaused {
 
         delete UserToDeposits[msg.sender].Deposit[_NFTindex];
 
@@ -243,14 +176,14 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
         ERC721(_Ext_NFT_Address).safeTransferFrom(address(this), msg.sender, _nftID);
     }
 
-    function FractionalizeNFT(uint256 _NFTindex) external fractionalized0(_NFTindex) NFTowner(_NFTindex) onlyApproved(_NFTindex) whenNotPaused {
+    function FractionalizeNFT(uint256 _NFTindex) external whenNotPaused {
        
         UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = true;
 
         _mint(address(msg.sender), CO2O, UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O, "");
     }
 
-    function UnifyFractions(uint256 _NFTindex) external fractionalized0(_NFTindex) NFTowner(_NFTindex) whenNotPaused {
+    function UnifyFractions(uint256 _NFTindex) external whenNotPaused {
         
         uint256 totalFractions = UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O;
         require(balanceOf(msg.sender, CO2O) == totalFractions, "Insufficient fractions");
@@ -274,7 +207,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
         return sellRate;
     }
 
-    function buyCO2O(uint256 _amountCO2O) external payable validWEIamount activeLPbuy {
+    function buyCO2O(uint256 _amountCO2O) external payable whenNotPaused {
         require(msg.value >= _amountCO2O.mul(buyRate).add(fee));
         Reserve_CO2O.sub(_amountCO2O);
         Reserve_WEI.add(msg.value);
@@ -282,7 +215,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
         _updateRates();
     }
 
-    function sellCO2O(uint256 _amountCO2O) external validCO2Oamount(_amountCO2O) activeLPsell {
+    function sellCO2O(uint256 _amountCO2O) external whenNotPaused {
         require(_amountCO2O >= _amountCO2O.mul(sellRate));
         Reserve_CO2O.add(_amountCO2O.mul(sellRate));
         Reserve_WEI.sub(_amountCO2O);
@@ -291,7 +224,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessC
     }
 
     //Offsetting functionalities
-    function GoGreen(uint256 _amountCO2O, string calldata purpose) external validCO2Oamount(_amountCO2O) whenNotPaused {
+    function GoGreen(uint256 _amountCO2O, string calldata purpose) external whenNotPaused {
 
         _burn(msg.sender, CO2O, _amountCO2O);
 
