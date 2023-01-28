@@ -30,6 +30,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         uint256 public constant CO2O = 1;
         uint256 private constant Reserve_CO2O = 2;
         uint256 private constant Reserve_WEI = 3;
+        uint256 private constant Reserve_Interest = 4;
 
     //For Fractionalizer
         struct DepositStorage {
@@ -72,6 +73,8 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         uint256 buyRate;
         uint256 sellRate;
 
+        mapping(address => uint256) User2DividendLog;
+
     //For Offset Registry
         struct OffsetStorage {
             OffsetInfo[] Offsets;
@@ -102,15 +105,17 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         }
 
     //ECO Governance funcionalities
-        function addCertProposal(uint256 _Nftindex) external whenNotPaused returns(string memory) {
+        function addCertProposal(uint256 _Nftindex) external whenNotPaused returns(uint256 Proposal_ID) {
             
             ProposalInfo memory newProposal = ProposalInfo(_Nftindex, msg.sender, block.timestamp, 0);
+
+            uint256 ProposalID = _Counter2.current();
             
-            Index2Proposal[_Counter2.current()] = newProposal;
+            Index2Proposal[ProposalID] = newProposal;
 
-            _Counter2.increment(); 
+            _Counter2.increment();
 
-            return string(abi.encodePacked("Your proposal ID is:", Strings.toString(_Counter2.current())));
+            return ProposalID; 
         }
 
         function vote(uint256 _proposalID) external whenNotPaused {
@@ -129,6 +134,17 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
             uint256 _NFT_ID = Index2Proposal[_proposalID].Nftindex;
             UserToDeposits[msg.sender].Deposit[_NFT_ID].approved = true;
         }
+
+        function collectInterest(address payable _to) external payable {
+            
+            uint256 _share = balanceOf(msg.sender, ECO).div(totalSupply(ECO));
+            uint256 _dividend = Reserve_Interest.mul(_share);
+            Reserve_Interest.sub(_dividend);
+
+            bool sent = _to.send(_dividend);
+            require(sent);
+        }
+
 
     //Fractionalization functionalitities
         function DepositCert(address _Ext_NFT_Address, uint256 _Ext_NFT_ID, uint256 _totalCO2O) external whenNotPaused {
@@ -154,7 +170,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         }
 
         function WithdrawCert(uint256 _NFTindex) external whenNotPaused {
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner of this NFT can access it");
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner can access it");
             require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Token has already been fractionalized");
 
             delete UserToDeposits[msg.sender].Deposit[_NFTindex];
@@ -172,7 +188,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         }
 
         function UnifyFractions(uint256 _NFTindex) external whenNotPaused {
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner of this NFT can access it");
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner can access it");
             require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Token has already been fractionalized");
 
             uint256 totalFractions = UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O;
@@ -198,21 +214,26 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         }
 
         function buyCO2O(uint256 _amountCO2O) external payable whenNotPaused {
-            require(msg.value >= _amountCO2O.mul(buyRate).add(fee), "Not enough WEI provided");
+            require(msg.value >= _amountCO2O.mul(buyRate).mul(fee).div(100), "Not enough WEI provided");
             require(buyRate > 0, "Zero Liquidity...Wait until liquidity is provided");
 
             Reserve_CO2O.sub(_amountCO2O);
-            Reserve_WEI.add(msg.value);
+            Reserve_WEI.add(msg.value.sub(msg.value.mul(fee.div(100))));
+            Reserve_Interest.add(msg.value.mul(fee.div(100)));
 
             _safeTransferFrom(address(this), msg.sender, CO2O, _amountCO2O, "");
             _updateRates();
         }
 
-        function sellCO2O(uint256 _amountCO2O) external whenNotPaused {
+        function sellCO2O(uint256 _amountCO2O, address payable _to) external payable whenNotPaused {
             require(_amountCO2O >= _amountCO2O.mul(sellRate), "Not enough CO2O provided");
             require(buyRate > 0, "Zero Liquidity...Wait until liquidity is provided");
-            Reserve_CO2O.add(_amountCO2O.mul(sellRate));
-            Reserve_WEI.sub(_amountCO2O);
+
+            Reserve_CO2O.add(_amountCO2O);
+            Reserve_WEI.sub(_amountCO2O.mul(sellRate));
+            bool sent = _to.send(_amountCO2O.mul(sellRate));
+            require(sent);
+
             _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
             _updateRates();
         }
