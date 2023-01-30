@@ -11,14 +11,12 @@ pragma solidity ^0.8.0;
     import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
     import "@openzeppelin/contracts/utils/Counters.sol";
     import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-    import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Supply {
 
 //Library initialization
     using Counters for Counters.Counter;
     using SafeMath for uint256;
-    using Strings for string;
 
 //Declarations
     //Global counters
