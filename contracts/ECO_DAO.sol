@@ -233,8 +233,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
 
             totalSupply(Reserve_CO2O).add(_amountCO2O);
             totalSupply(Reserve_WEI).sub(_amountCO2O.mul(sellRate));
-            bool sent = _to.send(_amountCO2O.mul(sellRate));
-            require(sent);
+            _to.transfer(_amountCO2O.mul(sellRate));
 
             _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
             _updateRates();
