@@ -3,7 +3,7 @@
 ## Background Information
 ECO.DAO is a Coding Project for the module "Introduction to Blockchain Technology".
 
-Please, see the [whitepaper](https://github.com/m-principato/Smart-Contract-Coding/blob/main/ICO_Whitepaper.pdf) and the [pitch deck](https://github.com/m-principato/Smart-Contract-Coding/blob/main/ICO_Pitch.pdf) for more information.
+Please, see the [whitepaper](https://github.com/m-principato/Smart-Contract-Coding/blob/main/ECO_Whitepaper.pdf) and the [pitch deck](https://github.com/m-principato/Smart-Contract-Coding/blob/main/ICO_Pitch.pdf) for more information.
 
 ## Usage
 The contract is ready to be deployed, however, it is very lengthy (see [Room for imporevements](https://github.com/m-principato/Smart-Contract-Coding#room-for-improvements)).
