@@ -6,7 +6,7 @@ ECO.DAO is a Coding Project for the module "Introduction to Blockchain Technolog
 Please, see the [whitepaper](https://github.com/m-principato/Smart-Contract-Coding/blob/main/ICO-Whitepaper.pdf) and the [pitch deck](https://github.com/m-principato/Smart-Contract-Coding/blob/main/ICO-Pitch.pdf) for more information.
 
 ## Usage
-The contract is ready to be deployed, however, it exceedes the bytesize limit of the Ethereum Mainnet (see [Room for imporevements](https://github.com/m-principato/Smart-Contract-Coding#room-for-improvements)).
+The contract is ready to be deployed, however, it is very lengthy (see [Room for imporevements](https://github.com/m-principato/Smart-Contract-Coding#room-for-improvements)).
 
 ### Deploy with RemixIDE
 Straightforward deployment via import of the [ECO.DAO sol contract](https://github.com/m-principato/Smart-Contract-Coding/blob/main/contracts/ECO_DAO.sol), compiling it, and deploying it.
