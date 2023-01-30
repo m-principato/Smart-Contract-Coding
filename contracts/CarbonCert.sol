@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// THIS IS A STANDARD ERC721 NFT CONTRACT TO BE USED FOR THE TESTING OF THE FRACTIONALIZATION FEATURE //
+
 //Needed for ERC721
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
