@@ -6,303 +6,251 @@ pragma solidity ^0.8.0;
     import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
     import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
     import "@openzeppelin/contracts/security/Pausable.sol";
-    import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
     import "@openzeppelin/contracts/access/AccessControl.sol";
     import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Supply.sol";
     import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
     import "@openzeppelin/contracts/utils/Counters.sol";
     import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+    import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract ECO_DAO is ERC1155, IERC721Receiver, ERC1155Burnable, Pausable, AccessControl, ERC1155Supply {
+contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Supply {
 
 //Library initialization
-    using Counters for Counters.Counter; //using Counters library to safely increment global counters
-    using SafeMath for uint256; //using SafeMath library to avoid integer overflow-/underflow attacks
+    using Counters for Counters.Counter;
+    using SafeMath for uint256;
+    using Strings for string;
 
 //Declarations
     //Global counters
-    Counters.Counter private _Counter1;
-    Counters.Counter private _Counter2;
-    
-    //ERC1155 Tokens
-    uint256 public constant ECO = 0;                                                               
-    uint256 public constant CO2O = 1;
-    uint256 public constant Reserve_CO2O = 2;
-    uint256 public constant Reserve_WEI = 3;
+        Counters.Counter private _Counter1;
+        Counters.Counter private _Counter2;
 
-    //For Roles
-    bytes32 public constant ECO_Gov = keccak256("ECO_Gov");
+    //ERC1155 Tokens
+        uint256 public constant ECO = 0;                                                               
+        uint256 public constant CO2O = 1;
+        uint256 private constant Reserve_CO2O = 2;
+        uint256 private constant Reserve_WEI = 3;
+        uint256 private constant Reserve_Interest = 4;
 
     //For Fractionalizer
-    struct DepositStorage {
-        DepositInfo[] Deposit;
-    }
+        struct DepositStorage {
+            DepositInfo[] Deposit;
+        }
 
-    struct DepositInfo {
-        address owner;
-        address Ext_NFT_Address;
-        uint256 Ext_NFT_ID;
-        uint256 depositTimestamp;
-        uint256 totalCO2O;
-        bool approved;
-        bool fractionalized;
-    }
+        struct DepositInfo {
+            address owner;
+            address Ext_NFT_Address;
+            uint256 Ext_NFT_ID;
+            uint256 depositTimestamp;
+            uint256 totalCO2O;
+            bool approved;
+            bool fractionalized;
+        }
 
-    mapping(address => DepositStorage) UserToDeposits;
-    mapping(address => mapping (uint256 => uint256)) NftIndex;  
+        mapping(address => DepositStorage) UserToDeposits;
+        mapping(address => mapping (uint256 => uint256)) NftIndex;  
     
     //For Governance
-    ProposalInfo[] public Proposals;
 
-    struct ProposalInfo {
-        uint256 Nftindex;
-        address proposer;
-        uint256 proposalTimestamp;
-        uint256 voteCount;
-    }
+        struct ProposalInfo {
+            uint256 Nftindex;
+            address proposer;
+            uint256 proposalTimestamp;
+            uint256 voteCount;
+        }
 
-    struct VoteInfo {
-        bool hasVoted;
-        uint256 votes;  
-    }
+        struct VoteInfo {
+            bool hasVoted;
+            uint256 votes;  
+        }
 
-    mapping(uint256 => ProposalInfo) public Index2Proposal;
-    mapping(address => mapping(uint256 => VoteInfo)) public Voter2Proposal;
+        mapping(uint256 => ProposalInfo) public Index2Proposal;
+        mapping(address => mapping(uint256 => VoteInfo)) public Voter2Proposal;
 
     //For CFMM
-    uint256 fee;
+        uint256 fee = 10;
 
-    uint256 buyRate;
-    uint256 sellRate;
+        uint256 buyRate;
+        uint256 sellRate;
 
-    mapping(address => uint256) User2LPshares;
+        mapping(address => uint256) User2DividendLog;
 
     //For Offset Registry
-    struct OffsetStorage {
-        OffsetInfo[] Offsets;
-    }
+        struct OffsetStorage {
+            OffsetInfo[] Offsets;
+        }
 
-    struct OffsetInfo {
-        uint256 Offset_Amount;
-        bytes32 Proof_of_OffSet;
-    }
+        struct OffsetInfo {
+            uint256 Offset_Amount;
+            bytes32 Proof_of_OffSet;
+        }
 
-    mapping(address => OffsetStorage) User2OffSet;
+        mapping(address => OffsetStorage) User2OffSet;
 
 
 //Constructor
     constructor() ERC1155 ("") {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(ECO_Gov, msg.sender);
+        _mint(msg.sender, 0, 500 , "");
+        _mint(msg.sender, 1, 500 , "");
+        _mint(msg.sender, 2, 500 , "");
+        _mint(msg.sender, 3, 500 , "");
+        _mint(msg.sender, 4, 500 , "");
     }
 
-//Modifiers
-    //Fractionalization Checkers
-    modifier fractionalized0(uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Token has already been fractionalized");
-        _;
-    }   
-
-    modifier fractionalized1(uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == true, "Token has not yet been fractionalized");
-        _;
-    }  
-
-    modifier validAmountFraction(uint256 _amountFraction) {
-        require(balanceOf(msg.sender, CO2O) >= _amountFraction, "Insufficient fractions");
-        require(_amountFraction > 0, "Ammount cannot be Zero");
-        _;
-    }
-
-    modifier NFTowner(uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner of this NFT can access it");
-        _;
-    }
-
-    modifier onlyApproved (uint256 _NFTindex) {
-        require(UserToDeposits[msg.sender].Deposit[_NFTindex].approved == true, "Not approved by Governance. Please submit approval request");
-        _;
-    }
-
-    //Voting Checkers
-    modifier GovTokens() {
-        require(balanceOf(msg.sender, ECO) >  0, "No voting power. Get ECO tokens to vote");
-        _;
-    }
-    
-    modifier noDoubleVote(uint256 _proposalID) {
-        require(!Voter2Proposal[msg.sender][_proposalID].hasVoted, "You have already voted for this proposal.");
-        _;
-    }
-
-    modifier verifiable(uint256 _proposalID) {
-        require(Index2Proposal[_proposalID].voteCount > totalSupply(ECO).div(2), "Not enough votes");
-        _;
-    }
-
-    // Market checkers
-    modifier validWEIamount() {
-        require(msg.value > 0, "Amount cannot be zero!");
-        _;
-    }
-
-    modifier validCO2Oamount(uint256 CO2O_amount) {
-        require(CO2O_amount > 0, "Amount cannot be zero!");
-        _;
-    }
-    
-    modifier activeLPbuy() {
-        require(buyRate > 0, "Zero Liquidity...Wait until liquidity is provided");
-        _;
-    }
-
-    modifier activeLPsell() {
-        require(sellRate > 0, "Zero Liquidity...Wait until liquidity is provided");
-        _;
-    }
 
 //Functionalities
     //Security admin bypass functionalities
-    function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _pause();
-    }
+        function pause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+            _pause();
+        }
 
-    function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
-        _unpause();
-    }
+        function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
+            _unpause();
+        }
 
     //ECO Governance funcionalities
-    function addProposal(uint256 _Nftindex) external whenNotPaused {
-        ProposalInfo memory newProposal;
+        function addCertProposal(uint256 _Nftindex) external whenNotPaused returns(uint256 Proposal_ID) {
+            
+            ProposalInfo memory newProposal = ProposalInfo(_Nftindex, msg.sender, block.timestamp, 0);
 
-            newProposal.Nftindex = _Nftindex;
-            newProposal.proposer = msg.sender;
-            newProposal.proposalTimestamp = block.timestamp;
-            newProposal.voteCount = 0;
-        
-        Index2Proposal[_Counter2.current()] = newProposal;
+            uint256 ProposalID = _Counter2.current();
+            
+            Index2Proposal[ProposalID] = newProposal;
 
-        _Counter2.increment();
+            _Counter2.increment();
 
-        Proposals.push(newProposal);         
-    }
+            return ProposalID; 
+        }
 
-    function vote(uint256 _proposalID) external GovTokens noDoubleVote(_proposalID) whenNotPaused {
-        VoteInfo memory newVoter;
-            newVoter.hasVoted = true;
-            newVoter.votes = balanceOf(msg.sender, ECO);
+        function vote(uint256 _proposalID) external whenNotPaused {
+            require(!Voter2Proposal[msg.sender][_proposalID].hasVoted && balanceOf(msg.sender, ECO) >  0, "Already voted / No ECO tokens to vote");
 
-        Index2Proposal[_proposalID].voteCount.add(newVoter.votes);
-        
-        Voter2Proposal[msg.sender][_proposalID] = newVoter;
-    }
+            VoteInfo memory newVoter = VoteInfo(true, balanceOf(msg.sender, ECO));
 
-    function verify(uint256 _proposalID) external verifiable (_proposalID) whenNotPaused {
-        uint256 _NFT_ID = Index2Proposal[_proposalID].Nftindex;
+            Index2Proposal[_proposalID].voteCount.add(newVoter.votes);
+            
+            Voter2Proposal[msg.sender][_proposalID] = newVoter;
+        }
 
-        UserToDeposits[msg.sender].Deposit[_NFT_ID].approved = true;
-    }
+        function approveCert(uint256 _proposalID) external whenNotPaused {
+            require(Index2Proposal[_proposalID].voteCount > totalSupply(ECO).div(2), "Not enough votes");
+
+            uint256 _NFT_ID = Index2Proposal[_proposalID].Nftindex;
+            UserToDeposits[msg.sender].Deposit[_NFT_ID].approved = true;
+        }
+
+        function collectInterest(address payable _to) external payable {
+            
+            uint256 _share = balanceOf(msg.sender, ECO).div(totalSupply(ECO));
+            uint256 _dividend = totalSupply(Reserve_Interest).mul(_share);
+            totalSupply(Reserve_Interest).sub(_dividend);
+
+            _to.transfer(_dividend);
+        }
+
 
     //Fractionalization functionalitities
-    function DepositNFT(address _Ext_NFT_Address, uint256 _Ext_NFT_ID, uint256 _totalCO2O) external whenNotPaused {
-      
-        ERC721(_Ext_NFT_Address).safeTransferFrom(msg.sender, address(this), _Ext_NFT_ID);
-
-        DepositInfo memory newDeposit;
-
-            newDeposit.owner = msg.sender;
-            newDeposit.Ext_NFT_Address = _Ext_NFT_Address;
-            newDeposit.Ext_NFT_ID = _Ext_NFT_ID;
-            newDeposit.depositTimestamp = block.timestamp;
-            newDeposit.totalCO2O = _totalCO2O;
-            newDeposit.approved = false;
-            newDeposit.fractionalized = false;
+        function DepositCert(address _Ext_NFT_Address, uint256 _Ext_NFT_ID, uint256 _totalCO2O) external whenNotPaused {
         
-        NftIndex[_Ext_NFT_Address][_Ext_NFT_ID] = _Counter1.current();
+            ERC721(_Ext_NFT_Address).safeTransferFrom(msg.sender, address(this), _Ext_NFT_ID);
 
-        _Counter1.increment();
-
-        UserToDeposits[msg.sender].Deposit.push(newDeposit);
-    }
-
-    function getDepositInfo(address _Account, address _Ext_NFT_Address, uint256 _Ext_NFT_ID) external view returns (address, address, uint256, uint256, uint256, uint256, bool, bool) {
- 
-        uint256 _NFTindex = NftIndex[_Ext_NFT_Address][_Ext_NFT_ID]; // Look up the deposit information using the NftIndex mapping
-
-        DepositInfo storage deposit = UserToDeposits[_Account].Deposit[_NFTindex]; // Get the deposit information using the UserToDeposits mapping and the deposit index
-
-        return (deposit.owner, deposit.Ext_NFT_Address, deposit.Ext_NFT_ID, _NFTindex, deposit.depositTimestamp, deposit.totalCO2O, deposit.approved, deposit.fractionalized); // Return the relevant information from the deposit
-    }
-
-    function WithdrawNFT(uint256 _NFTindex) external fractionalized0(_NFTindex) NFTowner(_NFTindex) whenNotPaused {
-
-        delete UserToDeposits[msg.sender].Deposit[_NFTindex];
-
-        uint256 _nftID = UserToDeposits[msg.sender].Deposit[_NFTindex].Ext_NFT_ID;
-        address _Ext_NFT_Address = UserToDeposits[msg.sender].Deposit[_NFTindex].Ext_NFT_Address;
-        ERC721(_Ext_NFT_Address).safeTransferFrom(address(this), msg.sender, _nftID);
-    }
-
-    function FractionalizeNFT(uint256 _NFTindex) external fractionalized0(_NFTindex) NFTowner(_NFTindex) onlyApproved(_NFTindex) whenNotPaused {
-       
-        UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = true;
-
-        _mint(address(msg.sender), CO2O, UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O, "");
-    }
-
-    function UnifyFractions(uint256 _NFTindex) external fractionalized0(_NFTindex) NFTowner(_NFTindex) whenNotPaused {
+            DepositInfo memory newDeposit = DepositInfo(msg.sender, _Ext_NFT_Address, _Ext_NFT_ID, block.timestamp, _totalCO2O, false, false);
         
-        uint256 totalFractions = UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O;
-        require(balanceOf(msg.sender, CO2O) == totalFractions, "Insufficient fractions");
-        
-        _burn(address(msg.sender), CO2O, totalFractions);
+            NftIndex[_Ext_NFT_Address][_Ext_NFT_ID] = _Counter1.current();
 
-        UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = false;
-    }
+            _Counter1.increment();
+
+            UserToDeposits[msg.sender].Deposit.push(newDeposit);
+        }
+
+        function getCertInfo(address _Account, address _Ext_NFT_Address, uint256 _Ext_NFT_ID) external view returns (address, address, uint256, uint256, uint256, uint256, bool, bool) {
+    
+            uint256 _NFTindex = NftIndex[_Ext_NFT_Address][_Ext_NFT_ID]; 
+
+            DepositInfo storage deposit = UserToDeposits[_Account].Deposit[_NFTindex]; 
+
+            return (deposit.owner, deposit.Ext_NFT_Address, deposit.Ext_NFT_ID, _NFTindex, deposit.depositTimestamp, deposit.totalCO2O, deposit.approved, deposit.fractionalized); 
+        }
+
+        function WithdrawCert(uint256 _NFTindex) external whenNotPaused {
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner can access it");
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Already fractionalized");
+
+            delete UserToDeposits[msg.sender].Deposit[_NFTindex];
+
+            uint256 _nftID = UserToDeposits[msg.sender].Deposit[_NFTindex].Ext_NFT_ID;
+            address _Ext_NFT_Address = UserToDeposits[msg.sender].Deposit[_NFTindex].Ext_NFT_Address;
+            ERC721(_Ext_NFT_Address).safeTransferFrom(address(this), msg.sender, _nftID);
+        }
+
+        function FractionalizeCert(uint256 _NFTindex) external whenNotPaused {
+        
+            UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = true;
+
+            _mint(address(msg.sender), CO2O, UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O, "");
+        }
+
+        function UnifyFractions(uint256 _NFTindex) external whenNotPaused {
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner can access it");
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Already fractionalized");
+
+            uint256 totalFractions = UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O;
+            require(balanceOf(msg.sender, CO2O) == totalFractions, "Insufficient fractions");
+            
+            _burn(address(msg.sender), CO2O, totalFractions);
+
+            UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = false;
+        }
 
     //CFMM functionalities
-    function _updateRates() private {
-        buyRate = Reserve_WEI.div(Reserve_CO2O);
-        sellRate = Reserve_CO2O.div(Reserve_WEI);
-    }
-    
-    function _buyRate() private view returns(uint256) {
-        return buyRate;
-    }
+        function _updateRates() private {
+            buyRate = totalSupply(Reserve_WEI).div(totalSupply(Reserve_CO2O));
+            sellRate = totalSupply(Reserve_CO2O).div(totalSupply(Reserve_WEI));
+        }
+        
+        function _buyRate() private view returns(uint256) {
+            return buyRate;
+        }
 
-    function _sellRate() private view returns(uint256) {
-        return sellRate;
-    }
+        function _sellRate() private view returns(uint256) {
+            return sellRate;
+        }
 
-    function buyCO2O(uint256 _amountCO2O) external payable validWEIamount activeLPbuy {
-        require(msg.value >= _amountCO2O.mul(buyRate).add(fee));
-        Reserve_CO2O.sub(_amountCO2O);
-        Reserve_WEI.add(msg.value);
-        _safeTransferFrom(address(this), msg.sender, CO2O, _amountCO2O, "");
-        _updateRates();
-    }
+        function buyCO2O(uint256 _amountCO2O) external payable whenNotPaused {
+            require(msg.value >= _amountCO2O.mul(buyRate).mul(fee).div(100), "Not enough WEI");
 
-    function sellCO2O(uint256 _amountCO2O) external validCO2Oamount(_amountCO2O) activeLPsell {
-        require(_amountCO2O >= _amountCO2O.mul(sellRate));
-        Reserve_CO2O.add(_amountCO2O.mul(sellRate));
-        Reserve_WEI.sub(_amountCO2O);
-        _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
-        _updateRates();
-    }
+            totalSupply(Reserve_CO2O).sub(_amountCO2O);
+            totalSupply(Reserve_WEI).add(msg.value.sub(msg.value.mul(fee.div(100))));
+            totalSupply(Reserve_Interest).add(msg.value.mul(fee.div(100)));
+
+            _safeTransferFrom(address(this), msg.sender, CO2O, _amountCO2O, "");
+            _updateRates();
+        }
+
+        function sellCO2O(uint256 _amountCO2O, address payable _to) external payable whenNotPaused {
+            require(_amountCO2O >= _amountCO2O.mul(sellRate), "Not enough CO2O");
+
+            totalSupply(Reserve_CO2O).add(_amountCO2O);
+            totalSupply(Reserve_WEI).sub(_amountCO2O.mul(sellRate));
+            bool sent = _to.send(_amountCO2O.mul(sellRate));
+            require(sent);
+
+            _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
+            _updateRates();
+        }
 
     //Offsetting functionalities
-    function GoGreen(uint256 _amountCO2O, string calldata purpose) external validCO2Oamount(_amountCO2O) whenNotPaused {
+        function GoGreen(uint256 _amountCO2O, string calldata purpose) external whenNotPaused {
 
-        _burn(msg.sender, CO2O, _amountCO2O);
+            _burn(msg.sender, CO2O, _amountCO2O);
 
-        OffsetInfo memory newOffset;
-            newOffset.Offset_Amount = _amountCO2O;
-            newOffset.Proof_of_OffSet = keccak256(abi.encodePacked(_amountCO2O, purpose));
-        User2OffSet[msg.sender].Offsets.push(newOffset);
-    }
+            OffsetInfo memory newOffset = OffsetInfo(_amountCO2O, keccak256(abi.encodePacked(_amountCO2O, purpose)));
+
+            User2OffSet[msg.sender].Offsets.push(newOffset);
+        }
 
 //Overrides
-
     //Required override by solidity for safely receiving ERC721 tokens
     function onERC721Received(address, address, uint256, bytes calldata) external pure override returns(bytes4) {
         return this.onERC721Received.selector;
