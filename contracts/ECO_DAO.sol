@@ -43,7 +43,7 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
             bool fractionalized;
         }
 
-        mapping(address => DepositStorage) UserToDeposits;
+        mapping(address => DepositStorage) User2Deposits;
         mapping(address => mapping (uint256 => uint256)) NftIndex;  
     
     //For Governance
@@ -145,7 +145,7 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
             require(Index2Proposal[_proposalID].voteCount > totalSupply(ECO).div(2), "Not enough votes");
 
             uint256 _NFT_ID = Index2Proposal[_proposalID].Nftindex;
-            UserToDeposits[msg.sender].Deposit[_NFT_ID].approved = true;
+            User2Deposits[msg.sender].Deposit[_NFT_ID].approved = true;
         }
 
         function collectInterest(address payable _to) external {
@@ -170,46 +170,46 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
 
             _Counter1.increment();
 
-            UserToDeposits[msg.sender].Deposit.push(newDeposit);
+            User2Deposits[msg.sender].Deposit.push(newDeposit);
         }
 
         function getCertInfo(address _Account, address _Ext_NFT_Address, uint256 _Ext_NFT_ID) external view returns (address, address, uint256, uint256, uint256, uint256, bool, bool) {
     
             uint256 _NFTindex = NftIndex[_Ext_NFT_Address][_Ext_NFT_ID]; 
 
-            DepositInfo storage deposit = UserToDeposits[_Account].Deposit[_NFTindex]; 
+            DepositInfo storage deposit = User2Deposits[_Account].Deposit[_NFTindex]; 
 
             return (deposit.owner, deposit.Ext_NFT_Address, deposit.Ext_NFT_ID, _NFTindex, deposit.depositTimestamp, deposit.totalCO2O, deposit.approved, deposit.fractionalized); 
         }
 
         function WithdrawCert(uint256 _NFTindex) external whenNotPaused {
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender);
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false);
+            require(User2Deposits[msg.sender].Deposit[_NFTindex].owner == msg.sender);
+            require(User2Deposits[msg.sender].Deposit[_NFTindex].fractionalized == false);
 
-            delete UserToDeposits[msg.sender].Deposit[_NFTindex];
+            delete User2Deposits[msg.sender].Deposit[_NFTindex];
 
-            uint256 _nftID = UserToDeposits[msg.sender].Deposit[_NFTindex].Ext_NFT_ID;
-            address _Ext_NFT_Address = UserToDeposits[msg.sender].Deposit[_NFTindex].Ext_NFT_Address;
+            uint256 _nftID = User2Deposits[msg.sender].Deposit[_NFTindex].Ext_NFT_ID;
+            address _Ext_NFT_Address = User2Deposits[msg.sender].Deposit[_NFTindex].Ext_NFT_Address;
             ERC721(_Ext_NFT_Address).safeTransferFrom(address(this), msg.sender, _nftID);
         }
 
         function FractionalizeCert(uint256 _NFTindex) external whenNotPaused {
         
-            UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = true;
+            User2Deposits[msg.sender].Deposit[_NFTindex].fractionalized = true;
 
-            _mint(address(msg.sender), CO2O, UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O, "");
+            _mint(address(msg.sender), CO2O, User2Deposits[msg.sender].Deposit[_NFTindex].totalCO2O, "");
         }
 
         function UnifyFractions(uint256 _NFTindex) external whenNotPaused {
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender);
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false);
+            require(User2Deposits[msg.sender].Deposit[_NFTindex].owner == msg.sender);
+            require(User2Deposits[msg.sender].Deposit[_NFTindex].fractionalized == false);
 
-            uint256 totalFractions = UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O;
+            uint256 totalFractions = User2Deposits[msg.sender].Deposit[_NFTindex].totalCO2O;
             require(balanceOf(msg.sender, CO2O) == totalFractions, "Insufficient fractions");
             
             _burn(address(msg.sender), CO2O, totalFractions);
 
-            UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized = false;
+            User2Deposits[msg.sender].Deposit[_NFTindex].fractionalized = false;
         }
 
     //CFMM functionalities
