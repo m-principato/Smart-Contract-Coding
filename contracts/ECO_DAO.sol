@@ -149,6 +149,7 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
         }
 
         function collectInterest(address payable _to) external {
+            require(User2DividendLog[msg.sender].sub(block.timestamp) > 216000 /*1 month */);
             
             uint256 _share = balanceOf(msg.sender, ECO).div(totalSupply(ECO));
             uint256 _dividend = (Reserve_Interest).mul(_share);
@@ -182,8 +183,8 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
         }
 
         function WithdrawCert(uint256 _NFTindex) external whenNotPaused {
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner can access it");
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Already fractionalized");
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender);
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false);
 
             delete UserToDeposits[msg.sender].Deposit[_NFTindex];
 
@@ -200,8 +201,8 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
         }
 
         function UnifyFractions(uint256 _NFTindex) external whenNotPaused {
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender, "Only the owner can access it");
-            require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false, "Already fractionalized");
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].owner == msg.sender);
+            require(UserToDeposits[msg.sender].Deposit[_NFTindex].fractionalized == false);
 
             uint256 totalFractions = UserToDeposits[msg.sender].Deposit[_NFTindex].totalCO2O;
             require(balanceOf(msg.sender, CO2O) == totalFractions, "Insufficient fractions");
