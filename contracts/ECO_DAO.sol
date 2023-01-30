@@ -140,7 +140,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
             UserToDeposits[msg.sender].Deposit[_NFT_ID].approved = true;
         }
 
-        function collectInterest(address payable _to) external payable {
+        function collectInterest(address payable _to) external {
             
             uint256 _share = balanceOf(msg.sender, ECO).div(totalSupply(ECO));
             uint256 _dividend = totalSupply(Reserve_Interest).mul(_share);
