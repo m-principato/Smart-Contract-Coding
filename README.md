@@ -37,6 +37,6 @@ Specifically, we make use of
 - [Counters](https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/Counters.sol)
 
 ## Room for improvements
-The ECO.DAO contract is currently very long, exceeding the byte size limit of 24576 bytes that was proposed in [EIP-170](https://github.com/ethereum/EIPs/issues/170) and introduced by the [Spurious Dragon Ethereum Update](https://blog.ethereum.org/2016/11/18/hard-fork-no-4-spurious-dragon).
+The ECO.DAO contract is currently very long, almost exceeding the byte size limit of 24576 bytes that was proposed in [EIP-170](https://github.com/ethereum/EIPs/issues/170) and introduced by the [Spurious Dragon Ethereum Update](https://blog.ethereum.org/2016/11/18/hard-fork-no-4-spurious-dragon).
 
-Further steps need to be taken to reduce the contract size, for example by following common [guidlines for optimization](https://ethereum.org/en/developers/tutorials/downsizing-contracts-to-fight-the-contract-size-limit/). 
+Removal of error strings enabled us to comply with the byte size limit. However, further steps need to be taken to reduce the contract size, for example by following common [guidlines for optimization](https://ethereum.org/en/developers/tutorials/downsizing-contracts-to-fight-the-contract-size-limit/). 
