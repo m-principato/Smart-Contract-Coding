@@ -146,8 +146,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
             uint256 _dividend = totalSupply(Reserve_Interest).mul(_share);
             totalSupply(Reserve_Interest).sub(_dividend);
 
-            bool sent = _to.send(_dividend);
-            require(sent);
+            _to.transfer(_dividend);
         }
 
 
@@ -157,7 +156,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
             ERC721(_Ext_NFT_Address).safeTransferFrom(msg.sender, address(this), _Ext_NFT_ID);
 
             DepositInfo memory newDeposit = DepositInfo(msg.sender, _Ext_NFT_Address, _Ext_NFT_ID, block.timestamp, _totalCO2O, false, false);
-            
+        
             NftIndex[_Ext_NFT_Address][_Ext_NFT_ID] = _Counter1.current();
 
             _Counter1.increment();
