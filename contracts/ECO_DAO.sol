@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 //Imports
     //Making use of as much battle-tested code imports as possible to minimize bugs and possible attack vectors
     import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
+    import "@openzeppelin/contracts/token/ERC1155/utils/ERC1155Holder.sol";
     import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
     import "@openzeppelin/contracts/security/Pausable.sol";
     import "@openzeppelin/contracts/access/AccessControl.sol";
@@ -12,7 +13,7 @@ pragma solidity ^0.8.0;
     import "@openzeppelin/contracts/utils/Counters.sol";
     import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
-contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Supply {
+contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessControl, ERC1155Supply {
 
 //Library initialization
     using Counters for Counters.Counter;
@@ -69,8 +70,8 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         uint256 private Reserve_WEI = 0;
         uint256 private Reserve_Interest = 0;
 
-        uint256 buyRate;
-        uint256 sellRate;
+        uint256 public buyRate;
+        uint256 public sellRate;
 
         mapping(address => uint256) User2DividendLog;
 
@@ -103,6 +104,17 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
 
         function unpause() public onlyRole(DEFAULT_ADMIN_ROLE) {
             _unpause();
+        }
+
+    //Function for AMM test purposes
+        function fundAMM(uint256 _amountCO2O) external payable onlyRole(DEFAULT_ADMIN_ROLE) {
+            
+            Reserve_WEI = Reserve_WEI.add(msg.value);
+
+            _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");          
+            Reserve_CO2O = Reserve_CO2O.add(_amountCO2O);
+
+            _updateRates();
         }
 
     //ECO Governance funcionalities
@@ -201,8 +213,8 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
 
     //CFMM functionalities
         function _updateRates() private {
-            buyRate = (Reserve_WEI).div((Reserve_CO2O));
-            sellRate = (Reserve_CO2O).div((Reserve_WEI));
+            buyRate = Reserve_WEI.div(Reserve_CO2O);
+            sellRate = Reserve_CO2O.div(Reserve_WEI);
         }
         
         function _buyRate() private view returns(uint256) {
@@ -224,14 +236,15 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
             _updateRates();
         }
 
-        function sellCO2O(uint256 _amountCO2O, address payable _to) external payable whenNotPaused {
+        function sellCO2O(uint256 _amountCO2O, address payable _to) external whenNotPaused {
             require(_amountCO2O >= _amountCO2O.mul(sellRate), "Not enough CO2O");
 
+            _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
             Reserve_CO2O = Reserve_CO2O.add(_amountCO2O);
+
             Reserve_WEI = Reserve_WEI.sub(_amountCO2O.mul(sellRate));
             _to.transfer(_amountCO2O.mul(sellRate));
 
-            _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
             _updateRates();
         }
 
@@ -255,7 +268,7 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
     //Required override by solidity to signal support of AccessControl Interface
-    function supportsInterface(bytes4 interfaceId) public view override(ERC1155, AccessControl) returns (bool) { 
+    function supportsInterface(bytes4 interfaceId) public view override(ERC1155, ERC1155Receiver, AccessControl) returns (bool) { 
         return super.supportsInterface(interfaceId);
     }
 }
