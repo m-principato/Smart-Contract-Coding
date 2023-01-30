@@ -28,6 +28,9 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
     //ERC1155 Tokens
         uint256 public constant ECO = 0;                                                               
         uint256 public constant CO2O = 1;
+        uint256 private constant Reserve_CO2O = 2;
+        uint256 private constant Reserve_WEI = 3;
+        uint256 private constant Reserve_Interest = 4;
 
     //For Fractionalizer
         struct DepositStorage {
@@ -65,11 +68,6 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         mapping(address => mapping(uint256 => VoteInfo)) public Voter2Proposal;
 
     //For CFMM
-        
-        uint256 private  Reserve_CO2O;
-        uint256 private  Reserve_WEI;
-        uint256 private  Reserve_Interest;
-        
         uint256 fee = 10;
 
         uint256 buyRate;
@@ -95,10 +93,9 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
         _mint(msg.sender, 0, 500 , "");
         _mint(msg.sender, 1, 500 , "");
-        
-        _mint(address(this), 2, 500 , "");
-        _mint(address(this), 3, 500 , "");
-        _mint(address(this), 4, 500 , "");
+        _mint(msg.sender, 2, 500 , "");
+        _mint(msg.sender, 3, 500 , "");
+        _mint(msg.sender, 4, 500 , "");
     }
 
 
@@ -208,8 +205,8 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
 
     //CFMM functionalities
         function _updateRates() private {
-            buyRate = Reserve_WEI.div(Reserve_CO2O);
-            sellRate = Reserve_CO2O.div(Reserve_WEI);
+            buyRate = totalSupply(Reserve_WEI).div(totalSupply(Reserve_CO2O));
+            sellRate = totalSupply(Reserve_CO2O).div(totalSupply(Reserve_WEI));
         }
         
         function _buyRate() private view returns(uint256) {
@@ -223,20 +220,21 @@ contract ECO_DAO is ERC1155, IERC721Receiver, Pausable, AccessControl, ERC1155Su
         function buyCO2O(uint256 _amountCO2O) external payable whenNotPaused {
             require(msg.value >= _amountCO2O.mul(buyRate).mul(fee).div(100), "Not enough WEI");
 
-            Reserve_CO2O.sub(_amountCO2O);
-            Reserve_WEI.add(msg.value.sub(msg.value.mul(fee.div(100))));
-            Reserve_Interest.add(msg.value.mul(fee.div(100)));
+            totalSupply(Reserve_CO2O).sub(_amountCO2O);
+            totalSupply(Reserve_WEI).add(msg.value.sub(msg.value.mul(fee.div(100))));
+            totalSupply(Reserve_Interest).add(msg.value.mul(fee.div(100)));
 
             _safeTransferFrom(address(this), msg.sender, CO2O, _amountCO2O, "");
             _updateRates();
         }
 
-        function sellCO2O(uint256 _amountCO2O, address payable _to) external whenNotPaused {
+        function sellCO2O(uint256 _amountCO2O, address payable _to) external payable whenNotPaused {
             require(_amountCO2O >= _amountCO2O.mul(sellRate), "Not enough CO2O");
 
-            Reserve_CO2O.add(_amountCO2O);
-            Reserve_WEI.sub(_amountCO2O.mul(sellRate));
-            _to.transfer(_amountCO2O.mul(sellRate));
+            totalSupply(Reserve_CO2O).add(_amountCO2O);
+            totalSupply(Reserve_WEI).sub(_amountCO2O.mul(sellRate));
+            bool sent = _to.send(_amountCO2O.mul(sellRate));
+            require(sent);
 
             _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
             _updateRates();
