@@ -155,6 +155,8 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
             uint256 _dividend = (Reserve_Interest).mul(_share);
             Reserve_Interest = Reserve_Interest.sub(_dividend);
 
+            User2DividendLog[msg.sender] = block.timestamp;
+
             payable(msg.sender).transfer(_dividend);
         }
 
@@ -194,7 +196,9 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
         }
 
         function FractionalizeCert(uint256 _NFTindex) external whenNotPaused {
-        
+            require(User2Deposits[msg.sender].Deposit[_NFTindex].owner == msg.sender);
+            require(User2Deposits[msg.sender].Deposit[_NFTindex].fractionalized == false);
+
             User2Deposits[msg.sender].Deposit[_NFTindex].fractionalized = true;
 
             _mint(address(msg.sender), CO2O, User2Deposits[msg.sender].Deposit[_NFTindex].totalCO2O, "");
@@ -203,9 +207,8 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
         function UnifyFractions(uint256 _NFTindex) external whenNotPaused {
             require(User2Deposits[msg.sender].Deposit[_NFTindex].owner == msg.sender);
             require(User2Deposits[msg.sender].Deposit[_NFTindex].fractionalized == false);
-
             uint256 totalFractions = User2Deposits[msg.sender].Deposit[_NFTindex].totalCO2O;
-            require(balanceOf(msg.sender, CO2O) == totalFractions, "Insufficient fractions");
+            require(balanceOf(msg.sender, CO2O) > totalFractions);
             
             _burn(address(msg.sender), CO2O, totalFractions);
 
@@ -227,7 +230,7 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
         }
 
         function buyCO2O(uint256 _amountCO2O) external payable whenNotPaused {
-            uint256 requiredValue = _amountCO2O.mul(buyRate).mul(fee).div(100);
+            uint256 requiredValue = _amountCO2O.mul(buyRate).add(_amountCO2O.mul(buyRate).mul(fee).div(100));  
             require(msg.value >=  requiredValue, "Not enough WEI");
 
             Reserve_WEI = Reserve_WEI.add(msg.value.sub(msg.value.mul(fee.div(100))));
@@ -243,7 +246,6 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
         }
 
         function sellCO2O(uint256 _amountCO2O) external whenNotPaused {
-            require(_amountCO2O >= _amountCO2O.mul(sellRate), "Not enough CO2O");
 
             _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
             Reserve_CO2O = Reserve_CO2O.add(_amountCO2O);
@@ -273,7 +275,7 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
     function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal whenNotPaused override(ERC1155, ERC1155Supply) {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
-    //Required override by solidity to signal support of AccessControl Interface
+    //Required override by solidity to signal support of standard interfaces
     function supportsInterface(bytes4 interfaceId) public view override(ERC1155, ERC1155Receiver, AccessControl) returns (bool) { 
         return super.supportsInterface(interfaceId);
     }
