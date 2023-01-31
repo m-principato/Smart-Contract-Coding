@@ -234,7 +234,7 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
             Reserve_Interest = Reserve_Interest.add(msg.value.mul(fee.div(100)));
 
             uint256 excessValue = msg.value.sub(requiredValue);
-            if (excessValue > 0) {payable(msg.sender).transfer(excessValue);} else {}
+            (excessValue > 0) ? payable(msg.sender).transfer(excessValue) : ();
 
             Reserve_CO2O = Reserve_CO2O.sub(_amountCO2O);
             _safeTransferFrom(address(this), msg.sender, CO2O, _amountCO2O, "");
