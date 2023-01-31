@@ -150,14 +150,14 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
             User2Deposits[msg.sender].Deposit[_NFT_ID].approved = true;
         }
 
-        function collectInterest(address payable _to) external {
+        function collectInterest() external {
             require(User2DividendLog[msg.sender].sub(block.timestamp) > 216000 /*1 month */);
             
             uint256 _share = balanceOf(msg.sender, ECO).div(totalSupply(ECO));
             uint256 _dividend = (Reserve_Interest).mul(_share);
             Reserve_Interest = Reserve_Interest.sub(_dividend);
 
-            _to.transfer(_dividend);
+            payable(msg.sender).transfer(_dividend);
         }
 
 
@@ -229,24 +229,29 @@ contract ECO_DAO is ERC1155, ERC1155Holder, IERC721Receiver, Pausable, AccessCon
         }
 
         function buyCO2O(uint256 _amountCO2O) external payable whenNotPaused {
-            require(msg.value >= _amountCO2O.mul(buyRate).mul(fee).div(100), "Not enough WEI");
+            uint256 requiredValue = _amountCO2O.mul(buyRate).mul(fee).div(100);
+            require(msg.value >=  requiredValue, "Not enough WEI");
 
-            Reserve_CO2O = Reserve_CO2O.sub(_amountCO2O);
             Reserve_WEI = Reserve_WEI.add(msg.value.sub(msg.value.mul(fee.div(100))));
             Reserve_Interest = Reserve_Interest.add(msg.value.mul(fee.div(100)));
 
+            uint256 excessValue = msg.value.sub(requiredValue);
+            (excessValue > 0) ? payable(msg.sender).transfer(excessValue) : ();
+
+            Reserve_CO2O = Reserve_CO2O.sub(_amountCO2O);
             _safeTransferFrom(address(this), msg.sender, CO2O, _amountCO2O, "");
+
             _updateRates();
         }
 
-        function sellCO2O(uint256 _amountCO2O, address payable _to) external whenNotPaused {
+        function sellCO2O(uint256 _amountCO2O) external whenNotPaused {
             require(_amountCO2O >= _amountCO2O.mul(sellRate), "Not enough CO2O");
 
             _safeTransferFrom(msg.sender, address(this), CO2O, _amountCO2O, "");
             Reserve_CO2O = Reserve_CO2O.add(_amountCO2O);
 
             Reserve_WEI = Reserve_WEI.sub(_amountCO2O.mul(sellRate));
-            _to.transfer(_amountCO2O.mul(sellRate));
+            payable(msg.sender).transfer(_amountCO2O.mul(sellRate));
 
             _updateRates();
         }
